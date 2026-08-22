@@ -1,4 +1,5 @@
 #import "CylinderSettings.h"
+#import "../CylinderRoot.h"
 #import "../Defines.h"
 #import "CLEffect.h"
 
@@ -18,7 +19,7 @@
     if (self) {
         self.settings = [[NSUserDefaults alloc] initWithSuiteName:@"com.ryannair05.cylinder"];
         [self.settings registerDefaults:@{ PrefsEffectKey: DEFAULT_EFFECTS }];
-        _defaultFooterText = [[NSDictionary dictionaryWithContentsOfFile:@"/Library/PreferenceBundles/CylinderSettings.bundle/en.lproj/CylinderSettings.strings"] objectForKey:@"FOOTER_TEXT"];
+        _defaultFooterText = [[NSDictionary dictionaryWithContentsOfFile:CYLINDER_ROOT_PATH(@"/Library/PreferenceBundles/CylinderSettings.bundle/en.lproj/CylinderSettings.strings")] objectForKey:@"FOOTER_TEXT"];
     }
     return self;
 }

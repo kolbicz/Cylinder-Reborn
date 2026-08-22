@@ -3,6 +3,7 @@
 #import "../lua/lualib.h"
 // #import "macros.h"
 #import "lua_UIView.h"
+#import "../CylinderRoot.h"
 
 
 #define LOG_DIR @"/var/mobile/Library/Logs/Cylinder/"
@@ -154,15 +155,11 @@ static void set_environment(const char *script)
 
 static int open_script(const char *script)
 {
-    char path[strlen(script) + 22];
-    #ifdef THEOS_PACKAGE_INSTALL_PREFIX
-    sprintf(path, "/var/jb/Library/Cylinder/%s.lua", script);
-    #else
-    sprintf(path, "/Library/Cylinder/%s.lua", script);
-    #endif
+    NSString *relativePath = [NSString stringWithFormat:@"%s.lua", script];
+    NSString *path = [CYLINDER_ROOT_PATH(@"/Library/Cylinder") stringByAppendingPathComponent:relativePath];
 
     //load our file and save the function we want to call
-    BOOL loaded = luaL_loadfile(L, path) == 0;
+    BOOL loaded = luaL_loadfile(L, path.UTF8String) == 0;
     if(loaded)
     {
         set_environment(script);
@@ -231,13 +228,12 @@ static int l_loadfile_override(lua_State *L)
 {
     const char *file = lua_tostring(L, 1);
     const char *subfolder = lua_tostring(L, lua_upvalueindex(2));
+    NSString *resolvedFile = nil;
 
-    if(file != NULL)
-        #ifdef THEOS_PACKAGE_INSTALL_PREFIX
-        file = [NSString stringWithFormat:@"/var/jb/Library/Cylinder/%s/%s", subfolder, file].UTF8String;
-        #else
-        file = [NSString stringWithFormat:@"/Library/Cylinder/%s/%s", subfolder, file].UTF8String;
-        #endif
+    if(file != NULL) {
+        resolvedFile = [NSString stringWithFormat:@"%@/%s/%s", CYLINDER_ROOT_PATH(@"/Library/Cylinder"), subfolder, file];
+        file = resolvedFile.UTF8String;
+    }
 
     int top = lua_gettop(L);
     lua_pushvalue(L, lua_upvalueindex(1));

@@ -2,7 +2,7 @@
 
 ![](https://github.com/rweichler/cylinder/blob/cb8f000dfb1045b9b7cb872ba9b8c843f7f73ebc/code.png)
 
-## Latest version: 1.1.3
+## Latest version: 1.1.4
 
 Download the rootless or roothide package from the [latest release](https://github.com/kolbicz/Cylinder-Reborn/releases/latest).
 
@@ -72,7 +72,10 @@ make package
 For a roothide `.deb`, install [roothide/theos](https://github.com/roothide/theos) and run:
 
 ```
-make package THEOS_PACKAGE_SCHEME=roothide
+make clean package FINALPACKAGE=1 \
+  THEOS="$HOME/roothide-theos" \
+  TARGET=iphone:clang:16.5:15.0 \
+  THEOS_PACKAGE_SCHEME=roothide
 ```
 
 If you want it to build and install on your device, run this:

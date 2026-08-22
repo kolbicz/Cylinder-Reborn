@@ -1,6 +1,7 @@
 #import "../Defines.h"
 #import "CLDonateController.h"
 #include <objc/runtime.h>
+#import "../CylinderRoot.h"
 
 #define TEXT_SECTION 0
 #define PAYPAL_SECTION 1
@@ -45,11 +46,8 @@
         [[AVAudioSession sharedInstance] setActive:true error:&sessionError];
 
         NSError *error;
-        #ifdef THEOS_PACKAGE_INSTALL_PREFIX
-        _player = [[AVAudioPlayer alloc] initWithContentsOfURL:[NSURL URLWithString:@"/var/jb/Library/PreferenceBundles/CylinderSettings.bundle/" "iloveyou.mp3"] error:&error];
-        #else
-        _player = [[AVAudioPlayer alloc] initWithContentsOfURL:[NSURL URLWithString:@"/Library/PreferenceBundles/CylinderSettings.bundle/" "iloveyou.mp3"] error:&error];
-        #endif
+        NSString *audioPath = CYLINDER_ROOT_PATH(@"/Library/PreferenceBundles/CylinderSettings.bundle/iloveyou.mp3");
+        _player = [[AVAudioPlayer alloc] initWithContentsOfURL:[NSURL fileURLWithPath:audioPath] error:&error];
         if(!error)
         {
             [_player prepareToPlay];

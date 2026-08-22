@@ -3,7 +3,11 @@ export ARCHS = arm64 arm64e
 
 FINALPACKAGE = 1
 
-TARGET := iphone:clang:15.6:15.0
+ifeq ($(THEOS_PACKAGE_SCHEME),roothide)
+TARGET ?= iphone:clang:16.5:15.0
+else
+TARGET ?= iphone:clang:15.6:15.0
+endif
 
 export ADDITIONAL_CFLAGS = -DTHEOS_LEAN_AND_MEAN -fobjc-arc -DLUA_USE_IOS
 
