@@ -1,8 +1,8 @@
 Package: com.ryannair05.cylinder
 Name: Cylinder Reborn
-Version: 1.1.1
+Version: 1.1.3
 Architecture: iphoneos-arm
-Depends: firmware (>= 11.0), mobilesubstrate (>= 0.9.6011), preferenceloader
+Depends: firmware (>= 15.0), mobilesubstrate (>= 0.9.6011), preferenceloader
 Icon: file:///Library/PreferenceBundles/CylinderSettings.bundle/Icon@3x.png
 Description: Make your icons dance
 Maintainer: Ryan Nair

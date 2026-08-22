@@ -3,6 +3,7 @@
 #import "UIView+Cylinder.h"
 #import "tweak.h"
 #import "luastuff.h"
+#import <objc/message.h>
 
 static int _viewIndexTable;
 
@@ -114,19 +115,12 @@ static int l_uiview_index_height(lua_State *L)
 
 static int l_uiview_index_max_icons(lua_State *L)
 {
-    
     SBIconListView *self = (__bridge SBIconListView *)lua_touserdata(L, 1);
-
-    #ifdef THEOS_PACKAGE_INSTALL_PREFIX
-    lua_pushnumber(L, self.maximumIconCount);
-    #else
-    if (@available(iOS 13, *)) {
-        lua_pushnumber(L, self.maximumIconCount);
-    } 
-    else {
-        lua_pushnumber(L, self.maxIcons);
-    }
-    #endif
+    SEL selector = [self respondsToSelector:@selector(maximumIconCount)]
+        ? @selector(maximumIconCount)
+        : @selector(maxIcons);
+    NSUInteger count = ((NSUInteger (*)(id, SEL))objc_msgSend)(self, selector);
+    lua_pushnumber(L, count);
 
     return 1;
 }

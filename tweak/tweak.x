@@ -17,18 +17,19 @@ void reset_icon_layout(__unsafe_unretained SBIconListView *self)
     [self enumerateIconViewsUsingBlock:^(SBIconView *v)  {
         v.layer.transform = CATransform3DIdentity;
         [v.layer restorePosition];
+        v.alpha = 1;
     }];
 
 }
 
 void page_swipe(SBFolderView *self, SBIconScrollView *scrollView)
 {
-    CGRect eye = {scrollView.contentOffset, scrollView.frame.size};
+    CGRect eye = {scrollView.contentOffset, scrollView.bounds.size};
 
     for (int i = 0; i < scrollView.subviews.count; i++) {
         __unsafe_unretained SBIconListView *view = scrollView.subviews[i];
         // make sure it is an SBIconListView and actually has icons
-        if (view.subviews.count < 1 || ![view isMemberOfClass:objc_getClass("SBIconListView")]) continue;
+        if (view.subviews.count < 1 || ![view isKindOfClass:objc_getClass("SBIconListView")]) continue;
 
         if (view.wasModifiedByCylinder)
         {
@@ -60,8 +61,13 @@ void end_scroll(__unsafe_unretained SBFolderView *self)
 {   
     %orig;
 
-    //if its a rotation, then dont
-    //cylinder-ize it.
+    // Rotation updates the scroll offset during SpringBoard relayout. Do not
+    // interpret that movement as a page swipe, and clear any active effect.
+    if (self.isRotating) {
+        end_scroll(self);
+        return;
+    }
+
     if(!_enabled) return;
 
     page_swipe(self, scrollView);
@@ -73,9 +79,23 @@ void end_scroll(__unsafe_unretained SBFolderView *self)
 {
     %orig;
 
+    // Always clean up. A Lua error can disable Cylinder after views were changed.
+    end_scroll(self);
+
     if(_enabled) {
-        end_scroll(self);
         _randSeedForCurrentPage = arc4random();
+    }
+}
+
+-(void)scrollViewDidEndDragging:(SBIconScrollView *)scrollView willDecelerate:(BOOL)decelerate
+{
+    %orig;
+
+    if (!decelerate) {
+        end_scroll(self);
+        if (_enabled) {
+            _randSeedForCurrentPage = arc4random();
+        }
     }
 }
 

@@ -2,9 +2,9 @@
 
 ![](https://github.com/rweichler/cylinder/blob/cb8f000dfb1045b9b7cb872ba9b8c843f7f73ebc/code.png)
 
-## Latest version: 1.1.1
+## Latest version: 1.1.3
 
-[Here](https://github.com/ryannair05/Cylinder-Reborn/blob/master/packages/com.ryannair05.cylinder_1.1.1~ryannair05_iphoneos-arm.deb?raw=true)'s the deb.
+Download the rootless or roothide package from the [latest release](https://github.com/kolbicz/Cylinder-Reborn/releases/latest).
 
 ## what???
 
@@ -29,7 +29,7 @@ your name in /Library/Cylinder on your phone (like
 /Library/Cylinder/rweichler), drop your scripts in,
 and it should appear in settings (no respring required).
 
-Compatible with iOS 11-15.
+Compatible with iOS 15 and later.
 
 # How to build/install this
 
@@ -49,8 +49,8 @@ on Cydia and follow the instructions above.
 Clone the repository and cd into it
 
 ```
-git clone https://github.com/ryannair05/Cylinder-Reborn.git
-cd cylinder
+git clone https://github.com/kolbicz/Cylinder-Reborn.git
+cd Cylinder-Reborn
 ```
 
 ### For those who don't have Xcode installed
@@ -63,10 +63,16 @@ Just download one of those (must be >= iOS 13), unzip it somewhere, delete the o
 
 ## Building
 
-If you just want a .deb, run this:
+For a rootless `.deb`, run:
 
 ```
 make package
+```
+
+For a roothide `.deb`, install [roothide/theos](https://github.com/roothide/theos) and run:
+
+```
+make package THEOS_PACKAGE_SCHEME=roothide
 ```
 
 If you want it to build and install on your device, run this:

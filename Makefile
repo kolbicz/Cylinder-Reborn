@@ -1,11 +1,11 @@
-THEOS_PACKAGE_SCHEME=rootless
+THEOS_PACKAGE_SCHEME ?= rootless
 export ARCHS = arm64 arm64e
 
 FINALPACKAGE = 1
 
-TARGET := iphone:clang:14.5:15.0
+TARGET := iphone:clang:15.6:15.0
 
-export ADDITIONAL_CFLAGS = -DTHEOS_LEAN_AND_MEAN -fobjc-arc -Wno-deprecated
+export ADDITIONAL_CFLAGS = -DTHEOS_LEAN_AND_MEAN -fobjc-arc -DLUA_USE_IOS
 
 include $(THEOS)/makefiles/common.mk
 
