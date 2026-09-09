@@ -2,7 +2,7 @@
 
 ![](https://github.com/rweichler/cylinder/blob/cb8f000dfb1045b9b7cb872ba9b8c843f7f73ebc/code.png)
 
-## Latest version: 1.1.3
+## Latest version: 1.1.4
 
 Download the explicitly named `rootless` or `roothide` package from the [latest release](https://github.com/kolbicz/Cylinder-Reborn/releases/latest). Do not choose a package based only on the CPU architecture in its Debian metadata.
 
