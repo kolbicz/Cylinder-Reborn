@@ -6,7 +6,7 @@
 #import "../CylinderRoot.h"
 
 
-#define LOG_DIR @"/var/mobile/Library/Logs/Cylinder/"
+#define LOG_DIR CYLINDER_ROOT_PATH(@"/Library/Logs/Cylinder")
 #define LOG_PATH "errors.log"
 #define PRINT_PATH "print.log"
 
@@ -65,7 +65,7 @@ static void error_notification(NSArray *errors)
     NSData *data = [NSPropertyListSerialization dataWithPropertyList:errors format:NSPropertyListBinaryFormat_v1_0 options:0 error:NULL];
     if(data)
     {
-        [data writeToFile:LOG_DIR".errornotify" atomically:true];
+        [data writeToFile:[LOG_DIR stringByAppendingPathComponent:@".errornotify"] atomically:true];
         CFNotificationCenterRef r = CFNotificationCenterGetDarwinNotifyCenter();
         CFNotificationCenterPostNotification(r, CFSTR("luaERROR"), NULL, NULL, true);
     }
@@ -366,31 +366,35 @@ static BOOL manipulate_step(__unsafe_unretained UIView *view, float offset, int 
         NSArray *errors = [NSArray arrayWithObject:error];
         error_notification(errors);
         remove_script(funcIndex);
-        if (_randomize) {
-            funcIndex = arc4random_uniform(_scripts.count);
-        }
-        else if (funcIndex == _scripts.count) {
-            lua_pop(L, 1);
-            return false;
-        }
-        manipulate_step(view, offset, funcIndex);
+        lua_pop(L, 1);
+        return false;
     }
     lua_pop(L, 1);
-    return success;
+    return true;
 }
 
 inline BOOL manipulate(__unsafe_unretained UIView *view, float offset, u_int32_t rand)
 {
+    if(L == NULL || _scripts.count == 0)
+        return false;
+
     if(_randomize)
     {
-        return manipulate_step(view, offset, rand % _scripts.count);
-                                                                  //_scripts.count has decremented by 1
+        while(_scripts.count > 0)
+        {
+            int index = rand % _scripts.count;
+            if(manipulate_step(view, offset, index))
+                return true;
+        }
+        return false;
     }
     else
     {
-        for(int i = 0; i < _scripts.count; i++)
+        int i = 0;
+        while(i < _scripts.count)
         {
-            manipulate_step(view, offset, i);
+            if(manipulate_step(view, offset, i))
+                i++;
         }
         return _scripts.count > 0;
     }

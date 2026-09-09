@@ -30,7 +30,6 @@
 #define SYSTEM_LOCALIZE(KEY) [[NSBundle bundleWithIdentifier:@"com.apple.UIKit"] localizedStringForKey:KEY value:@"" table:nil]
 
 #define IN_SPRINGBOARD()     ([[[NSBundle mainBundle] bundleIdentifier] isEqualToString:@"com.apple.springboard"])
-#define PREFS_PATH           @"/var/mobile/Library/Preferences/com.ryannair05.cylinder.plist"
 #define RETINIZE(r)          [r stringByAppendingString:@"@2x"]
 
 #define kCylinderSettingsChanged         @"com.ryannair05.cylinder/settingsChanged"
@@ -39,4 +38,3 @@
 #define DEFAULT_EFFECTS      [NSArray arrayWithObjects:[NSDictionary dictionaryWithObjectsAndKeys:DEFAULT_EFFECT, PrefsEffectKey, DEFAULT_DIRECTORY, PrefsEffectDirKey, nil], nil]
 #define DEFAULT_FORMULAS    [NSDictionary dictionary]
 #define DefaultPrefs         [NSMutableDictionary dictionaryWithObjectsAndKeys: DEFAULT_EFFECTS, PrefsEffectKey, DEFAULT_FORMULAS, PrefsFormulaKey, [NSNumber numberWithBool:YES], PrefsEnabledKey, [NSNumber numberWithBool:false], PrefsRandomizedKey, nil]
-

@@ -7,7 +7,7 @@
 {
     NSString *_defaultFooterText;
 }
-@property (nonatomic, retain, readwrite) NSUserDefaults *settings;
+@property (nonatomic, retain, readwrite) CylinderPreferences *settings;
 @end
 
 @implementation CylinderSettingsListController
@@ -17,7 +17,7 @@
     self = [super init];
 
     if (self) {
-        self.settings = [[NSUserDefaults alloc] initWithSuiteName:@"com.ryannair05.cylinder"];
+        self.settings = [CylinderPreferences new];
         [self.settings registerDefaults:@{ PrefsEffectKey: DEFAULT_EFFECTS }];
         _defaultFooterText = [[NSDictionary dictionaryWithContentsOfFile:CYLINDER_ROOT_PATH(@"/Library/PreferenceBundles/CylinderSettings.bundle/en.lproj/CylinderSettings.strings")] objectForKey:@"FOOTER_TEXT"];
     }

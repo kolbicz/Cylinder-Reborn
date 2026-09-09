@@ -2,11 +2,26 @@
 #import "luastuff.h"
 #import "../Defines.h"
 #import "UIView+Cylinder.h"
+#import <objc/message.h>
 
 static BOOL _enabled;
 static u_int32_t _randSeedForCurrentPage;
 __weak static SBIconView *neededView;
 static NSMutableArray *frameArray;
+static BOOL _suspendedForIconEditing;
+
+static BOOL cylinder_is_icon_editing(void)
+{
+    Class controllerClass = objc_getClass("SBIconController");
+    SEL sharedSelector = @selector(sharedInstance);
+    SEL editingSelector = @selector(isEditing);
+    if(!controllerClass || ![controllerClass respondsToSelector:sharedSelector])
+        return false;
+
+    id controller = ((id (*)(id, SEL))objc_msgSend)(controllerClass, sharedSelector);
+    return controller && [controller respondsToSelector:editingSelector]
+        && ((BOOL (*)(id, SEL))objc_msgSend)(controller, editingSelector);
+}
 
 void reset_icon_layout(__unsafe_unretained SBIconListView *self)
 {
@@ -68,6 +83,18 @@ void end_scroll(__unsafe_unretained SBFolderView *self)
         return;
     }
 
+    // Dragging icons temporarily replaces and reparents icon views. Running
+    // scripts against that transient hierarchy can make them fail and remove
+    // themselves from the active effect array.
+    if(cylinder_is_icon_editing()) {
+        if(!_suspendedForIconEditing) {
+            end_scroll(self);
+            _suspendedForIconEditing = true;
+        }
+        return;
+    }
+    _suspendedForIconEditing = false;
+
     if(!_enabled) return;
 
     page_swipe(self, scrollView);
@@ -127,22 +154,27 @@ void end_scroll(__unsafe_unretained SBFolderView *self)
 
 static void loadPrefs()
 {
-    NSUserDefaults *settings = [[NSUserDefaults alloc] initWithSuiteName:@"com.ryannair05.cylinder"];
-    [settings registerDefaults:@{
-        PrefsEnabledKey: @YES,
-        PrefsRandomizedKey: @NO,
-        PrefsEffectKey: DEFAULT_EFFECTS,
-    }];
+    CFStringRef domain = CFSTR("com.ryannair05.cylinder");
+    CFPreferencesAppSynchronize(domain);
+    id enabledValue = CFBridgingRelease(CFPreferencesCopyAppValue(
+        (__bridge CFStringRef)PrefsEnabledKey, domain));
+    id randomValue = CFBridgingRelease(CFPreferencesCopyAppValue(
+        (__bridge CFStringRef)PrefsRandomizedKey, domain));
+    id effectsValue = CFBridgingRelease(CFPreferencesCopyAppValue(
+        (__bridge CFStringRef)PrefsEffectKey, domain));
 
-    if(settings && ![settings boolForKey:PrefsEnabledKey])
+    BOOL enabled = enabledValue ? [enabledValue boolValue] : YES;
+    BOOL random = randomValue ? [randomValue boolValue] : NO;
+    NSArray *effects = [effectsValue isKindOfClass:NSArray.class]
+        ? effectsValue : DEFAULT_EFFECTS;
+
+    if(!enabled)
     {
         close_lua();
         _enabled = false;
     }
     else
     {
-        BOOL random = [settings boolForKey:PrefsRandomizedKey];
-        NSArray *effects = [settings arrayForKey:PrefsEffectKey];
         _enabled = init_lua(effects, random);
     }
 }

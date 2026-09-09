@@ -226,7 +226,7 @@ static CLEffectsController *sharedController = nil;
 
 @end
 
-#define ERROR_DIR @"/var/mobile/Library/Logs/Cylinder/.errornotify"
+#define ERROR_DIR CYLINDER_ROOT_PATH(@"/Library/Logs/Cylinder/.errornotify")
 
 static void luaErrorNotification()
 {
