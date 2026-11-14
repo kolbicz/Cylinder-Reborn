@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+if [ "${1:-}" = configure ]; then
+    log_directory='@CYLINDER_PREFIX@/Library/Logs/Cylinder'
+    mkdir -p "$log_directory"
+    chown 501:501 "$log_directory"
+    chmod 0755 "$log_directory"
+fi

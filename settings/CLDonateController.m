@@ -1,13 +1,12 @@
 #import "../Defines.h"
 #import "CLDonateController.h"
 #include <objc/runtime.h>
-#import "../CylinderRoot.h"
 
 #define TEXT_SECTION 0
 #define PAYPAL_SECTION 1
 #define BITCOIN_SECTION 2
 #define BITCOIN_ADDRESS @"177JwbKv8msAQPVk8azEKMCuNBWHJbs1XT"
-#define PAYPAL_URL @"https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=rweichler%40gmail%2ecom&lc=US&item_name=Reed%20Weichler&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted"
+#define PAYPAL_URL @"https://www.paypal.com/paypalme/ryannair05"
 
 @interface UITableView (Private)
 - (NSArray *) indexPathsForSelectedRows;
@@ -46,8 +45,8 @@
         [[AVAudioSession sharedInstance] setActive:true error:&sessionError];
 
         NSError *error;
-        NSString *audioPath = CYLINDER_ROOT_PATH(@"/Library/PreferenceBundles/CylinderSettings.bundle/iloveyou.mp3");
-        _player = [[AVAudioPlayer alloc] initWithContentsOfURL:[NSURL fileURLWithPath:audioPath] error:&error];
+        NSURL *audioURL = [[NSBundle bundleForClass:self.class] URLForResource:@"iloveyou" withExtension:@"mp3"];
+        _player = [[AVAudioPlayer alloc] initWithContentsOfURL:audioURL error:&error];
         if(!error)
         {
             [_player prepareToPlay];
@@ -113,7 +112,6 @@
             cell.textLabel.text = BITCOIN_ADDRESS;
         break;
         case PAYPAL_SECTION:
-            // cell.textLabel.text = LOCALIZE(@"PAYPAL", @"Tap here to go to Safari and donate to the original developer (rweichler) via Paypal");
             cell.textLabel.text = nil;
         break;
     }
@@ -135,7 +133,7 @@
     }
     else if(indexPath.section == PAYPAL_SECTION)
     {
-        // [[UIApplication sharedApplication] openURL:[NSURL URLWithString:PAYPAL_URL] options:@{} completionHandler:nil];
+        // PayPal entry remains disabled in this fork.
     }
     else
     {

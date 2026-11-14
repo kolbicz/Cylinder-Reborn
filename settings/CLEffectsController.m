@@ -105,6 +105,7 @@ static CLEffectsController *sharedController = nil;
 {
     self.effects = [NSMutableArray array];
     CylinderSettingsListController *ctrl = (CylinderSettingsListController*)self.parentController;
+    // Match the tweak's scripts directory for the active package scheme.
     [self addEffectsFromDirectory:CYLINDER_ROOT_PATH(@"/Library/Cylinder")];
    
     NSArray *effects = [ctrl.settings objectForKey:PrefsEffectKey];
@@ -164,8 +165,9 @@ static CLEffectsController *sharedController = nil;
 
 -(void)setCellIcon:(UITableViewCell *)cell effect:(CLEffect *)effect
 {
-    if(effect.broken)
-        cell.imageView.image = [UIImage imageWithContentsOfFile:CYLINDER_ROOT_PATH(@"/Library/PreferenceBundles/CylinderSettings.bundle/error.png")];
+    cell.imageView.image = effect.broken
+        ? [UIImage imageNamed:@"error" inBundle:[NSBundle bundleForClass:self.class] compatibleWithTraitCollection:nil]
+        : nil;
 }
 
 -(id)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
@@ -228,7 +230,7 @@ static CLEffectsController *sharedController = nil;
 
 #define ERROR_DIR CYLINDER_ROOT_PATH(@"/Library/Logs/Cylinder/.errornotify")
 
-static void luaErrorNotification()
+static void luaErrorNotification(void)
 {
     CLEffectsController *self = sharedController;
     if(!self) return;
@@ -244,7 +246,7 @@ static void luaErrorNotification()
         CLEffect *effect = [self effectWithName:name inDirectory:folder];
         BOOL broken = [[effectDict valueForKey:@"broken"] boolValue];
 
-        if(broken && !effect.broken) changed = true;
+        if(broken != effect.broken) changed = true;
 
         effect.broken = broken;
 
@@ -253,8 +255,15 @@ static void luaErrorNotification()
     if(changed) [[self view] reloadData];
 }
 
+static void CylinderLuaErrorNotification(__unused CFNotificationCenterRef center,
+    __unused void *observer, __unused CFStringRef name, __unused const void *object,
+    __unused CFDictionaryRef userInfo)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{ luaErrorNotification(); });
+}
+
 static __attribute__((constructor)) void __wbsInit() {
 
     CFNotificationCenterRef r = CFNotificationCenterGetDarwinNotifyCenter();
-    CFNotificationCenterAddObserver(r, NULL, (CFNotificationCallback)luaErrorNotification, (CFStringRef)@"luaERROR", NULL, CFNotificationSuspensionBehaviorCoalesce);
+    CFNotificationCenterAddObserver(r, NULL, CylinderLuaErrorNotification, CFSTR("luaERROR"), NULL, CFNotificationSuspensionBehaviorCoalesce);
 }

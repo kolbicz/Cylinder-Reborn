@@ -1,191 +1,170 @@
 #import "tweak.h"
 #import "luastuff.h"
 #import "../Defines.h"
-#import "UIView+Cylinder.h"
+#import "CylinderPageContext.h"
+#import "CylinderPageCoordinator.h"
+#import "CylinderTransitionCoordinator.h"
+
+#import <objc/runtime.h>
 #import <objc/message.h>
 
 static BOOL _enabled;
-static u_int32_t _randSeedForCurrentPage;
-__weak static SBIconView *neededView;
-static NSMutableArray *frameArray;
-static BOOL _suspendedForIconEditing;
 
-static BOOL cylinder_is_icon_editing(void)
+static BOOL CylinderShouldSuspend(SBFolderView *folderView)
 {
-    Class controllerClass = objc_getClass("SBIconController");
-    SEL sharedSelector = @selector(sharedInstance);
-    SEL editingSelector = @selector(isEditing);
-    if(!controllerClass || ![controllerClass respondsToSelector:sharedSelector])
-        return false;
-
-    id controller = ((id (*)(id, SEL))objc_msgSend)(controllerClass, sharedSelector);
-    return controller && [controller respondsToSelector:editingSelector]
-        && ((BOOL (*)(id, SEL))objc_msgSend)(controller, editingSelector);
-}
-
-void reset_icon_layout(__unsafe_unretained SBIconListView *self)
-{
-    self.layer.transform = CATransform3DIdentity;
-    [self.layer restorePosition];
-    self.alpha = 1;
-    
-    [self enumerateIconViewsUsingBlock:^(SBIconView *v)  {
-        v.layer.transform = CATransform3DIdentity;
-        [v.layer restorePosition];
-        v.alpha = 1;
-    }];
-
-}
-
-void page_swipe(SBFolderView *self, SBIconScrollView *scrollView)
-{
-    CGRect eye = {scrollView.contentOffset, scrollView.bounds.size};
-
-    for (int i = 0; i < scrollView.subviews.count; i++) {
-        __unsafe_unretained SBIconListView *view = scrollView.subviews[i];
-        // make sure it is an SBIconListView and actually has icons
-        if (view.subviews.count < 1 || ![view isKindOfClass:objc_getClass("SBIconListView")]) continue;
-
-        if (view.wasModifiedByCylinder)
-        {
-            reset_icon_layout(view);
-        }
-
-        if(CGRectIntersectsRect(eye, view.frame))
-        {
-            const float offset = scrollView.contentOffset.x - view.frame.origin.x;
-
-            _enabled = manipulate((UIView *) view, offset, _randSeedForCurrentPage); //defined in luastuff.m
-            view.wasModifiedByCylinder = true;
-        }
+    BOOL editing = NO;
+    id controller = [objc_getClass("SBIconController") sharedInstance];
+    if ([controller respondsToSelector:@selector(isEditing)]) {
+        editing = ((BOOL (*)(id, SEL))objc_msgSend)(controller, @selector(isEditing));
     }
+    if (!folderView.isRotating && !editing) return NO;
+    CylinderFinishActiveFolderScroll();
+    return YES;
 }
 
-void end_scroll(__unsafe_unretained SBFolderView *self)
+%hook SBIconListView
+- (void)willRemoveSubview:(UIView *)subview
 {
-    [self enumerateIconListViewsUsingBlock:^(SBIconListView *view)  {
-        reset_icon_layout(view);
-        view.wasModifiedByCylinder = false;
-        [view setIconsNeedLayout];
-        [view setAlphaForAllIcons:1];
-    }];
+    [[CylinderPageContext existingContextForPage:self] subviewWillLeave:subview];
+    %orig;
 }
 
-%hook SBFolderView //SBIconController
+- (void)didAddSubview:(UIView *)subview
+{
+    %orig;
+    [[CylinderPageContext existingContextForPage:self] subviewDidJoin];
+}
+
+- (void)setIconsNeedLayout
+{
+    [CylinderPageContext pageWillLayOutIcons:self];
+    %orig;
+}
+%end
+
+%group LegacyPageHooks
+%hook SBFolderView
 -(void)scrollViewDidScroll:(SBIconScrollView *)scrollView
-{   
+{
     %orig;
+    if(CylinderShouldSuspend(self) || !_enabled) return;
 
-    // Rotation updates the scroll offset during SpringBoard relayout. Do not
-    // interpret that movement as a page swipe, and clear any active effect.
-    if (self.isRotating) {
-        end_scroll(self);
-        return;
-    }
+    _enabled = CylinderHandleLegacyFolderScroll(self, scrollView);
+    if (!_enabled) CylinderFinishActiveFolderScroll();
+}
+%end
+%end
 
-    // Dragging icons temporarily replaces and reparents icon views. Running
-    // scripts against that transient hierarchy can make them fail and remove
-    // themselves from the active effect array.
-    if(cylinder_is_icon_editing()) {
-        if(!_suspendedForIconEditing) {
-            end_scroll(self);
-            _suspendedForIconEditing = true;
-        }
-        return;
-    }
-    _suspendedForIconEditing = false;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
 
-    if(!_enabled) return;
+%group ModernPageHooks
+%hook SBFolderView
+-(void)scrollViewDidScroll:(SBIconScrollView *)scrollView
+{
+    %orig;
+    if(CylinderShouldSuspend(self) || !_enabled) return;
 
-    page_swipe(self, scrollView);
+    _enabled = CylinderHandleModernFolderScroll(self, scrollView);
+    if (!_enabled) CylinderFinishActiveFolderScroll();
+}
+%end
+%end
+
+%group ModernTransitionHooks
+%hook SBIconView
+- (void)prepareToCrossfadeImageWithView:(UIView *)view
+                            anchorPoint:(CGPoint)anchorPoint
+                                options:(SBIconViewCrossfadeOptions)options
+{
+    %orig;
+    if (options & SBIconViewCrossfadeOptionMasksCorners) CylinderTransitionPrepared(self);
 }
 %end
 
-%hook SBFolderView 
--(void)scrollViewDidEndDecelerating:(SBIconScrollView *)scrollView
+%hook SBFluidSwitcherViewController
+- (void)_temporarilyHideMatchMovedZoomDownAnimationViewAnimated:(BOOL)animated
 {
+    CylinderTransitionWillBeHiddenBySpringBoard();
     %orig;
-
-    // Always clean up. A Lua error can disable Cylinder after views were changed.
-    end_scroll(self);
-
-    if(_enabled) {
-        _randSeedForCurrentPage = arc4random();
-    }
 }
-
--(void)scrollViewDidEndDragging:(SBIconScrollView *)scrollView willDecelerate:(BOOL)decelerate
-{
-    %orig;
-
-    if (!decelerate) {
-        end_scroll(self);
-        if (_enabled) {
-            _randSeedForCurrentPage = arc4random();
-        }
-    }
-}
-
+%end
 %end
 
-%group iOS15
-%hook SBRootFolderView 
-- (void)updateVisibleColumnRangeWithTotalLists:(NSUInteger)arg1 iconVisibilityHandling:(NSInteger)arg2
+%group TransitionCleanupHooks
+%hook SBIconView
+- (void)cleanupAfterCrossfade
 {
-    return %orig(arg1, 0);
+    CylinderTransitionWillCleanup(self);
+    %orig;
+}
+%end
+%end
+
+#pragma clang diagnostic pop
+
+%group ModernVisibilityHooks
+%hook SBFolderView
+- (SBIconVisibilityHandling)iconVisibilityHandling
+{
+    return SBIconVisibilityHandlingNone;
 }
 %end
 %end
 
 #ifndef THEOS_PACKAGE_INSTALL_PREFIX
-%group iOS14
+%group LegacyVisibilityHooks
 %hook SBFolderView 
-// For iOS 13, SpringBoard "optimizes" the icon visibility by only showing the bare
-// minimum. I have no idea why this works, but it does. An interesting stack trace can
-// be found by forcing a crash in -[SBRecycledViewsContainer addSubview:]. Probably best to decompile this function in IDA or something.
--(void)updateVisibleColumnRangeWithTotalLists:(NSUInteger)arg1 columnsPerList:(NSUInteger)arg2 iconVisibilityHandling:(NSInteger)arg3
+-(void)updateVisibleColumnRangeWithTotalLists:(NSUInteger)arg1 columnsPerList:(NSUInteger)arg2 iconVisibilityHandling:(SBIconVisibilityHandling)arg3
 {
-    return %orig(arg1, arg2, 0);
+    %orig(arg1, arg2, SBIconVisibilityHandlingNone);
 }
 
 %end
 %end
 #endif
 
-static void loadPrefs()
+static void loadPrefs(void)
 {
+    CylinderFinishActiveFolderScroll();
     CFStringRef domain = CFSTR("com.ryannair05.cylinder");
     CFPreferencesAppSynchronize(domain);
-    id enabledValue = CFBridgingRelease(CFPreferencesCopyAppValue(
-        (__bridge CFStringRef)PrefsEnabledKey, domain));
-    id randomValue = CFBridgingRelease(CFPreferencesCopyAppValue(
-        (__bridge CFStringRef)PrefsRandomizedKey, domain));
-    id effectsValue = CFBridgingRelease(CFPreferencesCopyAppValue(
-        (__bridge CFStringRef)PrefsEffectKey, domain));
-
-    BOOL enabled = enabledValue ? [enabledValue boolValue] : YES;
-    BOOL random = randomValue ? [randomValue boolValue] : NO;
-    NSArray *effects = [effectsValue isKindOfClass:NSArray.class]
-        ? effectsValue : DEFAULT_EFFECTS;
-
-    if(!enabled)
+    id enabled = CFBridgingRelease(CFPreferencesCopyAppValue((__bridge CFStringRef)PrefsEnabledKey, domain));
+    id random = CFBridgingRelease(CFPreferencesCopyAppValue((__bridge CFStringRef)PrefsRandomizedKey, domain));
+    id effects = CFBridgingRelease(CFPreferencesCopyAppValue((__bridge CFStringRef)PrefsEffectKey, domain));
+    if (enabled && [enabled respondsToSelector:@selector(boolValue)] && ![enabled boolValue])
     {
         close_lua();
-        _enabled = false;
+        _enabled = NO;
     }
     else
     {
-        _enabled = init_lua(effects, random);
+        _enabled = init_lua([effects isKindOfClass:NSArray.class] ? effects : DEFAULT_EFFECTS,
+            [random respondsToSelector:@selector(boolValue)] && [random boolValue]);
     }
 }
 
+static void CylinderPerformWhenScrollingEnds(SBFolderView *folderView, __unused SEL selector, dispatch_block_t completion) API_AVAILABLE(ios(11.0));
+static void CylinderPerformWhenScrollingEnds(SBFolderView *folderView, __unused SEL selector, dispatch_block_t completion)
+{
+    if ([folderView isScrolling]) {
+        [folderView _addScrollingCompletionBlock:completion];
+    } else {
+        completion();
+    }
+}
 
-// the reason for this is create_state() in luastuff.m,
-// which loadPrefs() calls, is called when SpringBoard loads.
-// Unfortunately calling UIScreen.mainScreen.bounds.size
-// causes a bootloop. so instead of setting that 
-// global variable there, we set it when we know that
-// everything in SpringBoard has already loaded
+static void CylinderPreferencesChanged(__unused CFNotificationCenterRef center,
+                                       __unused void *observer,
+                                       __unused CFStringRef name,
+                                       __unused const void *object,
+                                       __unused CFDictionaryRef userInfo)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{ loadPrefs(); });
+}
+
+/// Defers Lua initialization because create_state() reads UIScreen through PERSPECTIVE_DISTANCE;
+/// doing that from the tweak constructor causes SpringBoard to bootloop.
 %hook SpringBoard
 -(void)applicationDidFinishLaunching:(id)application 
 {
@@ -197,16 +176,33 @@ static void loadPrefs()
 %ctor{
     %init;
 
+    if (@available(iOS 11, *)) {
+        class_addMethod(objc_getClass("SBFolderView"),
+                        @selector(performWhenScrollingEndsUsingBlock:),
+                        (IMP)CylinderPerformWhenScrollingEnds,
+                        "v@:@?");
+    }
+
+
+    if (@available(iOS 14, *)) {
+        %init(ModernPageHooks);
+        %init(ModernTransitionHooks);
+        %init(TransitionCleanupHooks);
+    } else {
+        %init(LegacyPageHooks);
+    }
+
     if (@available(iOS 15, *)) {
-        %init(iOS15);
+        %init(ModernVisibilityHooks);
     }
     #ifndef THEOS_PACKAGE_INSTALL_PREFIX
-    else {
-        %init(iOS14);
+    // SpringBoard added this method in iOS 13.
+    else if (@available(iOS 13, *)) {
+        %init(LegacyVisibilityHooks);
     }
     #endif
 
-    //listen to notification center (for settings change)
+
     CFNotificationCenterRef r = CFNotificationCenterGetDarwinNotifyCenter();
-    CFNotificationCenterAddObserver(r, NULL, (CFNotificationCallback)loadPrefs, (CFStringRef)kCylinderSettingsChanged, NULL, CFNotificationSuspensionBehaviorCoalesce);
+    CFNotificationCenterAddObserver(r, NULL, CylinderPreferencesChanged, (CFStringRef)kCylinderSettingsChanged, NULL, CFNotificationSuspensionBehaviorCoalesce);
 }

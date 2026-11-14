@@ -1,6 +1,5 @@
 #import "../Defines.h"
 #import "CLFormulasController.h"
-#import "../CylinderRoot.h"
 
 #define ADD_SECTION 0
 #define FORMULA_SECTION 1
@@ -201,24 +200,13 @@
 
 -(NSString *)keyForIndex:(int)index
 {
-    int i = 0;
-    for(NSString *key in self.formulas)
-    {
-        if(i == index) return key;
-        i++;
-    }
-    return nil;
+    NSArray *keys = [self.formulas.allKeys sortedArrayUsingSelector:@selector(compare:)];
+    return index >= 0 && (NSUInteger)index < keys.count ? keys[index] : nil;
 }
 
 -(NSUInteger)indexForKey:(NSString *)key
 {
-    NSUInteger i = 0;
-    for(NSString *k in self.formulas)
-    {
-        if([k isEqualToString:key]) return i;
-        i++;
-    }
-    return NSNotFound;
+    return [[self.formulas.allKeys sortedArrayUsingSelector:@selector(compare:)] indexOfObject:key];
 }
 
 
@@ -255,7 +243,7 @@
     if(indexPath.section == ADD_SECTION)
     {
         cell.textLabel.text = LOCALIZE(@"CREATE_NEW_FORMULA", @"Create new formula");
-        cell.imageView.image = [UIImage imageWithContentsOfFile:CYLINDER_ROOT_PATH(@"/Library/PreferenceBundles/CylinderSettings.bundle/plus.png")];
+        cell.imageView.image = [UIImage imageNamed:@"plus" inBundle:[NSBundle bundleForClass:self.class] compatibleWithTraitCollection:nil];
 
     }
     else if(indexPath.section == FORMULA_SECTION)
@@ -306,9 +294,11 @@
     {
         if(self.selectedFormula)
         {
-            int index = [self indexForKey:self.selectedFormula];
-            UITableViewCell *cell = [_tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:index inSection:FORMULA_SECTION]];
-            cell.accessoryType = UITableViewCellAccessoryNone;
+            NSUInteger index = [self indexForKey:self.selectedFormula];
+            if (index != NSNotFound) {
+                UITableViewCell *cell = [_tableView cellForRowAtIndexPath:[NSIndexPath indexPathForRow:index inSection:FORMULA_SECTION]];
+                cell.accessoryType = UITableViewCellAccessoryNone;
+            }
         }
 
         self.selectedFormula = [self keyForIndex:indexPath.row];
