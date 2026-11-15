@@ -4,13 +4,19 @@
 
 ## Download
 
-## Latest version: 1.2.0
+## Latest version: 1.2.1
 
 This fork combines upstream 1.2.0 with iPad rotation and icon-editing recovery,
 CFPreferences-based settings, isolated jailbreak-root logs, and PreferenceLoader staging fixes.
-Download an explicitly named `rootless` or `roothide` package from the
+
+Add the repo `https://kolbicz.github.io/repo/` in Sileo or Zebra to get updates
+automatically, or download an explicitly named `rootless` or `roothide` package from the
 [Releases page](https://github.com/kolbicz/Cylinder-Reborn/releases/latest).
 Both variants require iOS 15 or later; select the package for your jailbreak environment.
+
+Since 1.2.1 this fork is packaged as `cz.kolbi.cylinder`. It replaces
+`com.ryannair05.cylinder`, so installing it removes the original package; your settings
+and scripts carry over.
 
 ## what???
 
