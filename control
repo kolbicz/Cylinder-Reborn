@@ -8,7 +8,7 @@ Replaces: com.ryannair05.cylinder
 Provides: com.ryannair05.cylinder (= 1.2.1)
 Icon: https://kolbicz.github.io/repo/icons/cz.kolbi.cylinder.png
 Description: Make your icons dance
-Maintainer: kolbicz
+Maintainer: Christoph Kolbicz
 Author: Ryan Nair
 Section: Tweaks
 Homepage: https://github.com/kolbicz/Cylinder-Reborn
